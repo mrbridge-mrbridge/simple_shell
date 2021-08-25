@@ -35,15 +35,9 @@ int main(int argc, char**argv)
 
 		cmd = read_cmd();
 
-		if(cmd[0] == EOF)
-		{
-			break;
-		}
-
-
 		if(!cmd)
 		{
-			continue;
+			exit(EXIT_SUCCESS);
 		}
 
 		if(cmd[0] == '\0' || strcmp(cmd, "\n") == 0)
