@@ -26,7 +26,7 @@ void add_to_buf(char c)
 
 	if(tok_bufindex >= tok_bufsize)
 	{
-		har *tmp = realloc(tok_buf, tok_bufsize*2);
+		char *tmp = realloc(tok_buf, tok_bufsize*2);
 
 		if(!tmp)
 		{
