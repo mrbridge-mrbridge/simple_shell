@@ -85,7 +85,7 @@ char peek_char(struct source_s *src)
  * Return:
  */
 
-void skip_white_space(struct source_s *src)
+void skip_white_spaces(struct source_s *src)
 {
 	char c;
 
