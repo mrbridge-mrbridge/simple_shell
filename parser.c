@@ -42,7 +42,7 @@ struct node_s *parse_simple_command(struct token_s *tok)
 			return NULL;
 		}
 		set_node_val_str(word, tok->text);
-		add_chill_node(cmd, word);
+		add_child_node(cmd, word);
 
 		free_token(tok);
 	} while((tok = tokenize(src)) != &eof_token);
