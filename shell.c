@@ -5,7 +5,7 @@
 #include "shell.h"
 #include "source.h"
 #include "parser.h"
-#include "backend.h"
+#include "executor.h"
 
 /*
  * main - simple shell
