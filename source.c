@@ -94,7 +94,7 @@ void skip_white_space(struct source_s *src)
 		return;
 	}
 
-	whiel(((c = peek_char(src)) != EOF) && (c == ' ' || c == '\t'))
+	while(((c = peek_char(src)) != EOF) && (c == ' ' || c == '\t'))
 	{
 		next_char(src);
 	}
