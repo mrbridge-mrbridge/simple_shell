@@ -41,7 +41,7 @@ struct node_s
 	struct node_s *next_sibling, *prev_sibling; /**/
 };
 
-struct node_s *new_node(enum code_type_e type);
+struct node_s *new_node(enum node_type_e type);
 void add_child_node(struct node_s *parent, struct node_s *child);
 void free_node_tree(struct node_s *node);
 void set_node_val_str(struct node_s *node, char *val);

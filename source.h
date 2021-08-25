@@ -8,7 +8,7 @@
 
 struct source_s
 {
-	char *bffer;	/*the input text*/
+	char *buffer;	/*the input text*/
 	long bufsize;	/*size of the input text*/
 	long curpos;	/*absolute char position in source*/
 };
