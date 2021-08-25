@@ -12,7 +12,7 @@ int tok_bufindex = -1;
 
 struct token_s eof_token =
 {
-	.text_len = 0;
+	.text_len = 0,
 };
 
 /*
