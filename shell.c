@@ -1,132 +1,134 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <string.h>
 #include "shell.h"
-#include "source.h"
-#include "parser.h"
-#include "executor.h"
 
-/*
- * main - simple shell
- * @argc
- * @argv
- *
- * Return: 0
+void sig_handler(int sig);
+int execute(char **args, char **front);
+
+/**
+ * sig_handler - Prints a new prompt upon a signal.
+ * @sig: The signal.
  */
-
-
-int main(int argc, char**argv)
+void sig_handler(int sig)
 {
-	char *cmd;
+	char *new_prompt = "\n$ ";
 
-	do
-	{
-		print_prompt1();
-
-		cmd = read_cmd();
-
-		if(!cmd)
-		{
-			exit(EXIT_SUCCESS);
-		}
-
-		if(cmd[0] == '\0' || strcmp(cmd, "\n") == 0)
-		{
-			free(cmd);
-			continue;
-		}
-
-		if(strcmp(cmd, "exit\n") == 0)
-		{
-			free(cmd);
-			break;
-		}
-
-		struct source_s src;
-		src.buffer = cmd;
-		src.bufsize = strlen(cmd);
-		src.curpos = INIT_SRC_POS;
-		parse_and_execute(&src);
-
-		free(cmd);
-	} while(1);
-
-	return (0);
+	(void)sig;
+	signal(SIGINT, sig_handler);
+	write(STDIN_FILENO, new_prompt, 3);
 }
 
-char *read_cmd(void)
+/**
+ * execute - Executes a command in a child process.
+ * @args: An array of arguments.
+ * @front: A double pointer to the beginning of args.
+ *
+ * Return: If an error occurs - a corresponding error code.
+ *         O/w - The exit value of the last executed command.
+ */
+int execute(char **args, char **front)
 {
-	char buf[1024];
-	char *ptr = NULL;
-	char ptrlen = 0;
+	pid_t child_pid;
+	int status, flag = 0, ret = 0;
+	char *command = args[0];
 
-	while(fgets(buf, 1024, stdin))
+	if (command[0] != '/' && command[0] != '.')
 	{
-		int buflen = strlen(buf);
+		flag = 1;
+		command = get_location(command);
+	}
 
-		if(!ptr)
+	if (!command || (access(command, F_OK) == -1))
+	{
+		if (errno == EACCES)
+			ret = (create_error(args, 126));
+		else
+			ret = (create_error(args, 127));
+	}
+	else
+	{
+		child_pid = fork();
+		if (child_pid == -1)
 		{
-			ptr = malloc(buflen + 1);
+			if (flag)
+				free(command);
+			perror("Error child:");
+			return (1);
+		}
+		if (child_pid == 0)
+		{
+			execve(command, args, environ);
+			if (errno == EACCES)
+				ret = (create_error(args, 126));
+			free_env();
+			free_args(args, front);
+			free_alias_list(aliases);
+			_exit(ret);
 		}
 		else
 		{
-			char *ptr2 = realloc(ptr, ptrlen + buflen + 1);
-			if(ptr2)
-			{
-				ptr = ptr2;
-			}
-			else
-			{
-				free(ptr);
-				ptr = NULL;
-			}
+			wait(&status);
+			ret = WEXITSTATUS(status);
 		}
-		if(!ptr)
-		{
-			fprintf(stderr, "error: failed to alloc buffer: %s\n", strerror(errno));
-			return NULL;
-		}
-		strcpy(ptr + ptrlen, buf);
-
-		if(buf[buflen - 1] == '\n')
-		{
-			if(buflen == 1 || buf[buflen - 2] != '\\')
-			{
-				return ptr;
-			}
-
-			ptr[ptrlen + buflen - 2] = '\0';
-			buflen -= 2;
-			print_prompt2();
-		}
-		ptrlen += buflen;
 	}
-	return ptr;
+	if (flag)
+		free(command);
+	return (ret);
 }
 
-int parse_and_execute(struct source_s *src)
+/**
+ * main - Runs a simple UNIX command interpreter.
+ * @argc: The number of arguments supplied to the program.
+ * @argv: An array of pointers to the arguments.
+ *
+ * Return: The return value of the last executed command.
+ */
+int main(int argc, char *argv[])
 {
-	skip_white_spaces(src);
+	int ret = 0, retn;
+	int *exe_ret = &retn;
+	char *prompt = "$ ", *new_line = "\n";
 
-	struct token_s *tok = tokenize(src);
+	name = argv[0];
+	hist = 1;
+	aliases = NULL;
+	signal(SIGINT, sig_handler);
 
-	if(tok == &eof_token)
+	*exe_ret = 0;
+	environ = _copyenv();
+	if (!environ)
+		exit(-100);
+
+	if (argc != 1)
 	{
-		return (0);
+		ret = proc_file_commands(argv[1], exe_ret);
+		free_env();
+		free_alias_list(aliases);
+		return (*exe_ret);
 	}
-	while(tok && tok != &eof_token)
+
+	if (!isatty(STDIN_FILENO))
 	{
-		struct node_s *cmd = parse_simple_command(tok);
-		if(!cmd)
+		while (ret != END_OF_FILE && ret != EXIT)
+			ret = handle_args(exe_ret);
+		free_env();
+		free_alias_list(aliases);
+		return (*exe_ret);
+	}
+
+	while (1)
+	{
+		write(STDOUT_FILENO, prompt, 2);
+		ret = handle_args(exe_ret);
+		if (ret == END_OF_FILE || ret == EXIT)
 		{
-			break;
+			if (ret == END_OF_FILE)
+				write(STDOUT_FILENO, new_line, 1);
+			free_env();
+			free_alias_list(aliases);
+			exit(*exe_ret);
 		}
-
-		do_simple_command(cmd);
-		free_node_tree(cmd);
-		tok = tokenize(src);
 	}
 
-	return (1);
+	free_env();
+	free_alias_list(aliases);
+	return (*exe_ret);
 }
